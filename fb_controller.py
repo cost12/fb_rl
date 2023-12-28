@@ -14,7 +14,7 @@ class FbController:
     def off(self) -> None:
         self.send = False
 
-    def select_action(self, state, actions):
+    def select_action(self, state, actions,eps):
         pass
 
     def sarsa(self, s1, action, s2, reward, done):
@@ -38,32 +38,34 @@ class GameManager:
         self.controller1.off()
         self.controller2.off()
 
-    def advance_play(self):
+    def advance_play(self,eps=0) -> int:
         if self.env.is_over():
             return
         s1 = self.env.get_state()
-        if self.env.possession():
+        poss = self.env.possession()
+        if poss:
             self.controller1.off()
             self.controller2.on()
-            action = self.controller2.select_action(s1, self.env.get_actions())
+            action = self.controller2.select_action(s1, self.env.get_actions(),eps)
         else:
             self.controller1.on()
             self.controller2.off()
-            action = self.controller1.select_action(s1, self.env.get_actions())
+            action = self.controller1.select_action(s1, self.env.get_actions(),eps)
         if action is None:
             return
         s2, r, done = self.env.step(action)
-        if self.env.possession():
+        if poss:
             self.controller2.sarsa(s1,action,s2,r,done)
         else:
             self.controller1.sarsa(s1,action,s2,r,done)
+        return s2, r, done, self.env.possession(), action
 
 class FbRandomController(FbController):
 
     def __init__(self):
         pass
 
-    def select_action(self, state, actions:list[int]):
+    def select_action(self, state, actions:list[int],eps):
         if retro_env.FootballEnv.PUNT in actions:
             actions.remove(retro_env.FootballEnv.PUNT)
         return random.choice(actions)
@@ -78,7 +80,7 @@ class FbKeyboardController(FbController):
         root.bind('<KeyPress>', self.key_press)
         self.moves = []
 
-    def select_action(self, state, actions):
+    def select_action(self, state, actions,eps):
         if len(self.moves) > 0:
             move = self.moves.pop(0)
             while len(self.moves) > 0 and not (move in actions):
@@ -109,7 +111,7 @@ class FbKeyboardController(FbController):
         elif event.keysym == 'p':
             action = retro_env.FootballEnv.PUNT
         else:
-            if 0:
+            if 1:
                 print(event.keysym)
                 print(type(event.keysym))
             return
@@ -121,8 +123,8 @@ class FbLearningController(FbController):
         self.train = True
         self.model = rl_model
 
-    def select_action(self, state, actions):
-        return self.model.select_action(state, actions)
+    def select_action(self, state, actions,eps):
+        return self.model.select_action(state, actions,eps)
     
     def sarsa(self, s1, action, s2, reward, done):
         pass

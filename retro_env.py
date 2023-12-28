@@ -51,8 +51,8 @@ class Timing:
     """
     def __init__(self):
         self.quarter = 0
-        self.quarter_len = 120
-        self.time_left = 120
+        self.quarter_len = 60
+        self.time_left = 60
         self.over = False
         self.is_halftime = False
 
@@ -222,6 +222,7 @@ class FootballEnv:
         if self.points_scored > 0:
             self.state.kickoff()
         self.wraps = 0
+        self.yards_gained = 0
         self.is_turnover = False
         self.in_play = False
         self.is_down = False
@@ -287,6 +288,8 @@ class FootballEnv:
                 viewer.update_env(self)
         
     def move_player(self, player:Player, move:int) -> None:
+        if player == self.offense:
+            self.yards_gained = 0
         if move == FootballEnv.LEFT:
             if player.x() - 1 >= 0:
                 if self.field_rep[player.y()][player.x()-1] == FootballEnv.DEFENSE and player.team == Player.OFFENSE or \
@@ -299,6 +302,7 @@ class FootballEnv:
                     self.field_rep[player.y()][player.x()] = FootballEnv.DEFENSE
                 else:
                     self.field_rep[player.y()][player.x()] = FootballEnv.OFFENSE
+                    self.yards_gained = self.state.pos.direction*-1
             elif self.dir() == 1:
                 if player.team == Player.OFFENSE and player.x() == 0 and self.wraps > 0: # and self.field_rep[player.y()][self.length-1] == FootballEnv.EMPTY:
                     if self.field_rep[player.y()][self.length-1] == FootballEnv.DEFENSE and player.team == Player.OFFENSE or \
@@ -309,6 +313,7 @@ class FootballEnv:
                     player.body.position.x = self.length-1
                     self.field_rep[player.y()][player.x()] = FootballEnv.OFFENSE
                     self.wraps -= 1
+                    self.yards_gained = -1
             elif self.dir() == -1:
                 if player.team == Player.OFFENSE and player.x() == 0: # and self.field_rep[player.y()][self.length-1] == FootballEnv.EMPTY:
                     if self.field_rep[player.y()][self.length-1] == FootballEnv.DEFENSE and player.team == Player.OFFENSE or \
@@ -319,6 +324,7 @@ class FootballEnv:
                     player.body.position.x = self.length-1
                     self.field_rep[player.y()][player.x()] = FootballEnv.OFFENSE
                     self.wraps += 1
+                    self.yards_gained = 1
         elif move == FootballEnv.RIGHT:
             if player.x() + 1 < self.length:
                 if self.field_rep[player.y()][player.x()+1] == FootballEnv.DEFENSE and player.team == Player.OFFENSE or \
@@ -331,6 +337,7 @@ class FootballEnv:
                     self.field_rep[player.y()][player.x()] = FootballEnv.DEFENSE
                 else:
                     self.field_rep[player.y()][player.x()] = FootballEnv.OFFENSE
+                    self.yards_gained = self.state.pos.direction
             elif self.dir() == 1:
                 if player.team == Player.OFFENSE and player.x() + 1 == self.length: # and self.field_rep[player.y()][0] == FootballEnv.EMPTY:
                     if self.field_rep[player.y()][0] == FootballEnv.DEFENSE and player.team == Player.OFFENSE or \
@@ -341,6 +348,7 @@ class FootballEnv:
                     player.body.position.x = 0
                     self.field_rep[player.y()][player.x()] = FootballEnv.OFFENSE
                     self.wraps += 1
+                    self.yards_gained = 1
             elif self.dir() == -1:
                 if player.team == Player.OFFENSE and self.wraps > 0 and player.x() + 1 == self.length: # and self.field_rep[player.y()][0] == FootballEnv.EMPTY:
                     if self.field_rep[player.y()][0] == FootballEnv.DEFENSE and player.team == Player.OFFENSE or \
@@ -351,6 +359,7 @@ class FootballEnv:
                     player.body.position.x = 0
                     self.field_rep[player.y()][player.x()] = FootballEnv.OFFENSE
                     self.wraps -= 1
+                    self.yards_gained = -1
         elif move == FootballEnv.UP:
             if player.y() - 1 >= 0:
                 if self.field_rep[player.y()-1][player.x()] == FootballEnv.DEFENSE and player.team == Player.OFFENSE or \
@@ -435,7 +444,7 @@ class FootballEnv:
         elif self.can_punt() and move == FootballEnv.PUNT:
             self.punt()
             self.reset_play()
-            return self.get_state(), -1, self.is_over()
+            return self.get_state(), 0, self.is_over()
         self.in_play = True
         self.move_offense(move)
         points = 0
@@ -453,9 +462,10 @@ class FootballEnv:
             self.reset_play()
         for viewer in self.viewers:
             viewer.update_env(self)
-        if self.is_turnover:
-            points = -2
-        return self.get_state(), points, self.is_over()
+        #rew = 0
+        #if self.gain() >= self.dist():
+        #    rew = 10000
+        return self.get_state(), points+0.1*self.yards_gained, self.is_over()
     
     def t1(self):
         return "Home"

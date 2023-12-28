@@ -2,8 +2,10 @@ import tkinter as tk
 from tkinter import ttk
 import random
 import time
+import timeit
 
 import visual_tools as vt
+import rl_models
 
 class View(ttk.Frame):
     def __init__(self, frm:ttk.Frame, borderwidth=2, relief='groove'):
@@ -83,6 +85,64 @@ class GameSetFrame(View):
     def main_loop(self):
         pass
 
+class TrainingFrame(View):
+
+    def __init__(self, frm:ttk.Frame, env, model1, model2):
+        super().__init__(frm, borderwidth=2, relief='groove')
+        
+        self.env = env
+        self.model1 = model1
+        self.model2 = model2
+        self.total_trained = 0
+
+        self.iters = tk.IntVar()
+        self.iters.set(10000)
+        ttk.Label(self,text="Iters: "                   ).grid(row=0,column=0,sticky='news')
+        ttk.Entry(self,textvariable=self.iters          ).grid(row=0,column=1,sticky='news')
+        ttk.Button(self, text="Train",command=self.train).grid(row=0,column=2,sticky='news')
+
+        self.episodes = tk.IntVar()
+        self.episodes.set(10)
+        ttk.Label(self,text="Episodes: "              ).grid(row=1,column=0,sticky='news')
+        ttk.Entry(self,textvariable=self.episodes     ).grid(row=1,column=1,sticky='news')
+        ttk.Button(self, text="Test",command=self.test).grid(row=1,column=2,sticky='news')
+
+        self.val1 = tk.DoubleVar()
+        self.val2 = tk.DoubleVar()
+        ttk.Label(self,text="Model 1 avg reward: ").grid(row=2,column=0,sticky='news')
+        ttk.Label(self,textvariable=self.val1     ).grid(row=2,column=1,sticky='news')
+        ttk.Label(self,text="Model 2 avg reward: ").grid(row=3,column=0,sticky='news')
+        ttk.Label(self,textvariable=self.val2     ).grid(row=3,column=1,sticky='news')
+
+        self.feedback = tk.StringVar()
+        ttk.Label(self,textvariable=self.feedback).grid(row=4,column=0,columnspan=3,sticky='news')
+
+    def train(self):
+        iters = self.iters.get()
+        self.feedback.set(f"training the models for {iters} steps")
+        start = timeit.default_timer()
+        rl_models.learning_loop(self.env,self.model1,self.model2,iters,self.total_trained)
+        stop = timeit.default_timer()
+        self.total_trained += iters
+        self.feedback.set(f"training complete for {iters} steps in {int(stop-start)}s")
+
+    def test(self):
+        self.feedback.set(f"testing the models for {self.iters.get()} iters and {self.episodes.get()} episodes")
+        start = timeit.default_timer()
+        val1, val2 = rl_models.eval_policies(self.model1,self.model2,self.env,self.iters.get(),self.episodes.get())
+        stop = timeit.default_timer()
+        self.val1.set(val1)
+        self.val2.set(val2)
+        self.feedback.set(f"testing complete for {self.iters.get()} iters and {self.episodes.get()} episodes in {int(stop-start)}s")
+
+    def change_to(self):
+        pass
+
+    def change_from(self):
+        pass
+
+    def main_loop(self):
+        pass
 
 class GameFrame(View):
 
@@ -102,7 +162,12 @@ class GameFrame(View):
     def change_from(self):
         self.game_manager.off()
 
+    def restart(self):
+        if self.game_manager.env.is_over():
+            self.game_manager.reset()
+
     def reset(self,env):
+        ttk.Button(self,text="Restart",command=self.restart).grid(row=0,column=0,sticky='news')
         self.scorebug = ScorebugFrame(self)
         self.scorebug.grid(row=0,column=1,sticky='news')
         self.field = FieldFrame(self,env.width,env.length)

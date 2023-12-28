@@ -21,12 +21,10 @@ class SimpleNN(nn.Module):
         x = x.view(-1, self.in_dim)
         #print(type(x[0][0].item()))
         #print(x.shape)
-        for i in range(self.num_hidden_layers):
-            #print(self.layer_list[i])
+        for i in range(self.num_hidden_layers+1):
             x = F.tanh(self.layer_list[i](x))
             #print(x.shape)
-        out = self.layer_list[self.num_hidden_layers](x)
-        #print(out.shape)
+        out = self.layer_list[self.num_hidden_layers+1](x)
         return out
 
     def save(self, filename):
@@ -46,13 +44,14 @@ class ComplexNN(nn.Module):
         self.num_hidden_layers = num_hidden
         self.dropout = dropout
 
+        self.first_batch = nn.BatchNorm1d(self.in_dim)
         self.layer_list = nn.ModuleList()
         self.layer_dropout = nn.ModuleList()
         self.batch_norm_layer = nn.ModuleList()
-        self.layer_list.append(nn.Linear(1, self.fc_layer_neurons))
+        self.layer_list.append(nn.Linear(self.in_dim, self.fc_layer_neurons))
         self.batch_norm_layer.append(nn.BatchNorm1d(self.fc_layer_neurons))
         self.layer_dropout.append(nn.Dropout1d(self.dropout))
-        for i in range(1,num_hidden):
+        for i in range(0,num_hidden):
             self.layer_list.append(nn.Linear(self.fc_layer_neurons,self.fc_layer_neurons))
             self.batch_norm_layer.append(nn.BatchNorm1d(self.fc_layer_neurons))
             self.layer_dropout.append(nn.Dropout1d(self.dropout))
@@ -60,10 +59,12 @@ class ComplexNN(nn.Module):
         self.lin_out = nn.Linear(self.fc_layer_neurons, self.out_dim)
 
     def forward(self, x):
-        x = x.view(x.size(0), -1)
-        for i in range(self.num_hidden_layers):
+        x = x.view(-1, self.in_dim)
+        x = self.first_batch(x)
+        for i in range(self.num_hidden_layers+1):
             self.layer_dropout[i](x)
-            x = F.tanh(self.batch_norm_layer[i](self.layer_list[i](x)))
+            x = self.layer_list[i](x)
+            x = F.tanh(self.batch_norm_layer[i](x))
         x = self.lin_out(x)
         return x
 

@@ -13,23 +13,25 @@ def build_home(root:tk.Tk) -> display_game.View:
     ttk.Label(home, text="Welcome Home, use the buttons to navigate").grid(row=0,column=0,sticky='news')
     return home
 
-def football_vis(env:retro_env.FootballEnv, controller) -> None:
+def football_vis(env:retro_env.FootballEnv, controller1, controller2) -> None:
     root = tk.Tk()
     home = build_home(root)
-    controller1 = controller# fb_controller.FbRandomController() #fb_controller.FbKeyboardController(root)
-    controller2 = controller# fb_controller.FbRandomController()
+    #controller1 = fb_controller.FbKeyboardController(root)
+    #controller2 = fb_controller.FbKeyboardController(root)
     game_manager = fb_controller.GameManager(env,controller1,controller2)
     frames = dict[str,display_game.View]( \
                 {
                     "Game" :     display_game.GameFrame(root, game_manager),
+                    "Training":  display_game.TrainingFrame(root,retro_env.FootballEnv(),controller1.model,controller2.model),
                     "Home" :     home
                     #"Settings" : SettingsFrame(root) \
                 } \
             )
     access = dict[str,list[str]]( \
                 {
-                    "Game" : ["Home"],
-                    "Home" : ["Game"]
+                    "Game" :    ["Home"],
+                    "Training": ["Home"],
+                    "Home" :    ["Game","Training"]
                 } \
             )
     start = "Home"
@@ -42,11 +44,13 @@ def football_vis(env:retro_env.FootballEnv, controller) -> None:
 
 def main():
     env = retro_env.FootballEnv()
-    learner = rl_models.DQN(23,7)
-    learner.learning_loop(env,10000)
-    learn_controller = fb_controller.FbLearningController(learner)
-    env.reset(total_reset=True)
-    football_vis(env,learn_controller)
+    learner1 = rl_models.DQN(23,7)
+    learner2 = rl_models.DQN(23,7)
+    #rl_models.learning_loop(env, learner1, learner2,100000)
+    learn_controller1 = fb_controller.FbLearningController(learner1)
+    learn_controller2 = fb_controller.FbLearningController(learner2)
+    #env.reset(total_reset=True)
+    football_vis(env,learn_controller1,learn_controller2)
     
 
 if __name__=="__main__":
