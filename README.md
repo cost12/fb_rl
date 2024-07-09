@@ -1,2 +1,2 @@
-# fb_stuff
-Stuff with football
+# Football RL environment
+In the process of creating a football environment where reinforcement learning can be performed, and performing reinforcement learning. The current environment is inspired by a retro football handheld game.
