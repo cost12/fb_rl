@@ -6,6 +6,8 @@ import timeit
 
 import visual_tools as vt
 import rl_models
+import retro_env
+import fb_controller
 
 class View(ttk.Frame):
     def __init__(self, frm:ttk.Frame, borderwidth=2, relief='groove'):
@@ -117,14 +119,26 @@ class TrainingFrame(View):
         self.feedback = tk.StringVar()
         ttk.Label(self,textvariable=self.feedback).grid(row=4,column=0,columnspan=3,sticky='news')
 
+        ttk.Label(self,text=f"Total weights 1: {self.model1.policy.total_weights}").grid(row=5,column=0,columnspan=3,sticky='news')
+        ttk.Label(self,text=f"Total weights 2: {self.model2.policy.total_weights}").grid(row=6,column=0,columnspan=3,sticky='news')
+        
+        self.eps1 = tk.DoubleVar()
+        ttk.Label(self,text="Current eps 1: ").grid(row=7,column=0,sticky='news')
+        ttk.Label(self,textvariable=self.eps1).grid(row=7,column=1,columnspan=3,sticky='news')
+        self.eps2 = tk.DoubleVar()
+        ttk.Label(self,text="Current eps 2: ").grid(row=8,column=0,sticky='news')
+        ttk.Label(self,textvariable=self.eps2).grid(row=8,column=1,columnspan=3,sticky='news')
+
     def train(self):
         iters = self.iters.get()
-        self.feedback.set(f"training the models for {iters} steps")
+        self.feedback.set(f"training the models for {iters} steps, be patient")
         start = timeit.default_timer()
         rl_models.learning_loop(self.env,self.model1,self.model2,iters,self.total_trained)
         stop = timeit.default_timer()
         self.total_trained += iters
         self.feedback.set(f"training complete for {iters} steps in {int(stop-start)}s")
+        self.eps1.set(self.model1.eps)
+        self.eps2.set(self.model2.eps)
 
     def test(self):
         self.feedback.set(f"testing the models for {self.iters.get()} iters and {self.episodes.get()} episodes")
@@ -149,12 +163,14 @@ class GameFrame(View):
     def __init__(self, frm:ttk.Frame, game_manager):
         super().__init__(frm, borderwidth=2, relief='groove')
         game_manager.env.viewers.append(self)
+        self.game_manager = game_manager
         self.reset(game_manager.env)
         self.update_env(game_manager.env)
-        self.game_manager = game_manager
+        self.paused = True
 
     def main_loop(self):
-        self.game_manager.advance_play()
+        if not self.paused:
+            self.game_manager.advance_play()
     
     def change_to(self):
         self.game_manager.on()
@@ -166,16 +182,27 @@ class GameFrame(View):
         if self.game_manager.env.is_over():
             self.game_manager.reset()
 
+    def toggle(self):
+        self.paused = not self.paused
+
+    def step(self):
+        self.game_manager.advance_play()
+
     def reset(self,env):
         ttk.Button(self,text="Restart",command=self.restart).grid(row=0,column=0,sticky='news')
+        ttk.Button(self,text="Toggle",command=self.toggle).grid(row=0,column=1,sticky='news')
+        ttk.Button(self,text="Step",command=self.step).grid(row=0,column=2,sticky='news')
         self.scorebug = ScorebugFrame(self)
-        self.scorebug.grid(row=0,column=1,sticky='news')
+        self.scorebug.grid(row=0,column=3,sticky='news')
         self.field = FieldFrame(self,env.width,env.length)
-        self.field.grid(row=1,column=0,columnspan=2,sticky='news')
+        self.field.grid(row=1,column=0,columnspan=4,sticky='news')
+        self.info = QvalFrame(self)
+        self.info.grid(row=2,column=0,columnspan=4,sticky='news')
 
     def update_env(self, env):
         self.scorebug.update_env(env)
         self.field.update_env(env)
+        self.info.update_game(self.game_manager)
 
 class ScorebugFrame(ttk.Frame):
 
@@ -247,8 +274,7 @@ class ScorebugFrame(ttk.Frame):
         self.gain = tk.StringVar()
         ttk.Label(self, text="Current:").grid(row=0,column=14,sticky='news')
         ttk.Label(self, textvariable=self.gain).grid(row=0,column=15,sticky='news')
-
-        
+    
 class FieldFrame(ttk.Frame):
 
     def __init__(self, frm:ttk.Frame, r:int, c:int, *,width=300,length=1000):
@@ -308,3 +334,61 @@ class FieldFrame(ttk.Frame):
         self.players.append(player)
         player = self.canvas.create_oval(*self.xy_to_coords(8,1),fill='red')
         self.players.append(player)
+
+class QvalFrame(ttk.Frame):
+
+    def __init__(self, frm:ttk.Frame):
+        super().__init__(frm, borderwidth=2, relief='groove')
+        self.reset()
+
+    def reset(self):
+        self.up_q = tk.DoubleVar()
+        self.down_q = tk.DoubleVar()
+        self.left_q = tk.DoubleVar()
+        self.right_q = tk.DoubleVar()
+        self.stay_q = tk.DoubleVar()
+        self.kick_q = tk.DoubleVar()
+        self.punt_q = tk.DoubleVar()
+        self.train_state = tk.StringVar()
+
+        ttk.Label(self,text="Q Values:").grid(row=0,column=0,sticky='news')
+        ttk.Label(self,text="UP: ").grid(row=1,column=0,sticky='news')
+        ttk.Label(self,textvariable=self.up_q).grid(row=1,column=1,sticky='news')
+        ttk.Label(self,text="DOWN: ").grid(row=2,column=0,sticky='news')
+        ttk.Label(self,textvariable=self.down_q).grid(row=2,column=1,sticky='news')
+        ttk.Label(self,text="LEFT: ").grid(row=3,column=0,sticky='news')
+        ttk.Label(self,textvariable=self.left_q).grid(row=3,column=1,sticky='news')
+        ttk.Label(self,text="RIGHT: ").grid(row=4,column=0,sticky='news')
+        ttk.Label(self,textvariable=self.right_q).grid(row=4,column=1,sticky='news')
+        ttk.Label(self,text="STAY: ").grid(row=5,column=0,sticky='news')
+        ttk.Label(self,textvariable=self.stay_q).grid(row=5,column=1,sticky='news')
+        ttk.Label(self,text="KICK: ").grid(row=6,column=0,sticky='news')
+        ttk.Label(self,textvariable=self.kick_q).grid(row=6,column=1,sticky='news')
+        ttk.Label(self,text="PUNT: ").grid(row=7,column=0,sticky='news')
+        ttk.Label(self,textvariable=self.punt_q).grid(row=7,column=1,sticky='news')
+        ttk.Label(self,textvariable=self.train_state).grid(row=8,column=0,sticky='news')
+
+
+    def update_game(self, game_manager):
+        vals = None
+        if game_manager.env.possession() and isinstance(game_manager.controller2,fb_controller.FbLearningController):
+            vals = game_manager.controller2.model.get_q_vals(game_manager.env.get_state())
+            if game_manager.controller2.model.policy.training:
+                self.train_state.set("Model 2 is training")
+            else:
+                self.train_state.set("Model 2 is testing")
+        elif not game_manager.env.possession() and isinstance(game_manager.controller1,fb_controller.FbLearningController):
+            vals = game_manager.controller1.model.get_q_vals(game_manager.env.get_state())
+            if game_manager.controller1.model.policy.training:
+                self.train_state.set("Model 1 is training")
+            else:
+                self.train_state.set("Model 1 is testing")
+
+        if vals is not None:
+            self.up_q.set(vals[retro_env.FootballEnv.UP].item())
+            self.down_q.set(vals[retro_env.FootballEnv.DOWN].item())
+            self.left_q.set(vals[retro_env.FootballEnv.LEFT].item())
+            self.right_q.set(vals[retro_env.FootballEnv.RIGHT].item())
+            self.stay_q.set(vals[retro_env.FootballEnv.NO_MOVE].item())
+            self.kick_q.set(vals[retro_env.FootballEnv.KICK].item())
+            self.punt_q.set(vals[retro_env.FootballEnv.PUNT].item())

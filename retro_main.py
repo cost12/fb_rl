@@ -44,8 +44,8 @@ def football_vis(env:retro_env.FootballEnv, controller1, controller2) -> None:
 
 def main():
     env = retro_env.FootballEnv()
-    learner1 = rl_models.DQN(23,7)
-    learner2 = rl_models.DQN(23,7)
+    learner1 = rl_models.DQN((1,3,10),7)
+    learner2 = rl_models.DQN((1,3,10),7)
     #rl_models.learning_loop(env, learner1, learner2,100000)
     learn_controller1 = fb_controller.FbLearningController(learner1)
     learn_controller2 = fb_controller.FbLearningController(learner2)

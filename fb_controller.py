@@ -52,8 +52,11 @@ class GameManager:
             self.controller2.off()
             action = self.controller1.select_action(s1, self.env.get_actions(),eps)
         if action is None:
-            return
+            print("no action")
+            return # Why would this happen?
         s2, r, done = self.env.step(action)
+        
+        # this isn't implemented yet
         if poss:
             self.controller2.sarsa(s1,action,s2,r,done)
         else:

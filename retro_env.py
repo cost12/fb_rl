@@ -208,13 +208,11 @@ class FootballEnv:
         self.reset()
 
     def get_state(self):
-        state = [self.offense.x(),self.offense.y()]
-        for defender in self.defense:
-            state.extend([defender.x(),defender.y()])
-        state.extend([self.wraps, self.wait, self.state.t1_score,self.state.t2_score, \
-                      self.state.pos.down, self.yd_line(), self.state.pos.to_first, self.possession(), \
-                      self.state.pos.direction, self.state.time.quarter, self.state.time.time_left])
-        return state 
+        board = [self.field_rep]
+        state = [self.wraps, self.wait, self.state.t1_score,self.state.t2_score, \
+                 self.state.pos.down, self.yd_line(), self.state.pos.to_first, self.possession(), \
+                 self.state.pos.direction, self.state.time.quarter, self.state.time.time_left]
+        return board, state 
 
     def reset(self, total_reset=False):
         if total_reset:
@@ -231,17 +229,17 @@ class FootballEnv:
         if self.state.pos.direction > 0:
             self.offense = Player(Body(0,1),Player.OFFENSE)
             self.defense = list[Player]()
-            self.defense.append(Player(Body(3,0),Player.DEFENSE))
+            #self.defense.append(Player(Body(3,0),Player.DEFENSE))
             self.defense.append(Player(Body(3,1),Player.DEFENSE))
-            self.defense.append(Player(Body(3,2),Player.DEFENSE))
+            #self.defense.append(Player(Body(3,2),Player.DEFENSE))
             self.defense.append(Player(Body(5,1),Player.DEFENSE))
             self.defense.append(Player(Body(8,1),Player.DEFENSE))
         else:
             self.offense = Player(Body(self.length-1,1),Player.OFFENSE)
             self.defense = list[Player]()
-            self.defense.append(Player(Body(self.length-4,0),Player.DEFENSE))
+            #self.defense.append(Player(Body(self.length-4,0),Player.DEFENSE))
             self.defense.append(Player(Body(self.length-4,1),Player.DEFENSE))
-            self.defense.append(Player(Body(self.length-4,2),Player.DEFENSE))
+            #self.defense.append(Player(Body(self.length-4,2),Player.DEFENSE))
             self.defense.append(Player(Body(self.length-6,1),Player.DEFENSE))
             self.defense.append(Player(Body(self.length-9,1),Player.DEFENSE))
 
@@ -403,6 +401,8 @@ class FootballEnv:
         self.move_player(self.offense, move)
 
     def move_defense(self) -> None:
+        if len(self.defense) == 0:
+            return
         all_moves = dict[Player,set[int]]()
         total_moves = 0
         # loop and find all legal moves that move towards the offense
@@ -458,6 +458,9 @@ class FootballEnv:
             self.wait = 0
             self.move_defense()
             self.state.time.run_clock()
+        down = False
+        if self.is_down:
+            down = True
         if self.is_down: # don't want to waste rl steps learning to reset
             self.reset_play()
         for viewer in self.viewers:
@@ -465,7 +468,16 @@ class FootballEnv:
         #rew = 0
         #if self.gain() >= self.dist():
         #    rew = 10000
-        return self.get_state(), points+0.1*self.yards_gained, self.is_over()
+        return self.get_state(), self.reward(points, self.yards_gained, down), down # self.is_over()
+    
+    def reward(self, points, yards_gained, down):
+        if down and points == 0:
+            return yards_gained-0.2 + 0.01
+        elif down and points > 0:
+            return points + yards_gained + 0.01
+        else:
+            return points + yards_gained + 0.01
+
     
     def t1(self):
         return "Home"
