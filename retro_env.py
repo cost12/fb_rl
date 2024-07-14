@@ -471,12 +471,7 @@ class FootballEnv:
         return self.get_state(), self.reward(points, self.yards_gained, down), down # self.is_over()
     
     def reward(self, points, yards_gained, down):
-        if down and points == 0:
-            return yards_gained-0.2 + 0.01
-        elif down and points > 0:
-            return points + yards_gained + 0.01
-        else:
-            return points + yards_gained + 0.01
+        return points + yards_gained + 0.01
 
     
     def t1(self):

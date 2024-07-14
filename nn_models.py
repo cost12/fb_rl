@@ -108,6 +108,7 @@ class CNN(nn.Module):
         self.cvn_dropout = nn.ModuleList()
         self.batch_norm_cvn = nn.ModuleList()
 
+        self.norm1 = nn.BatchNorm2d(self.channels)
         conv1 = nn.Conv2d(self.channels, self.num_filters, self.kernel_size, stride=self.stride, padding=self.padding)
         bn1 = nn.BatchNorm2d(self.num_filters)
         self.total_weights += self.num_filters * self.kernel_size[0] * self.kernel_size[1] * self.channels
@@ -149,22 +150,16 @@ class CNN(nn.Module):
         self.total_weights += self.fc_layer_neurons * self.out_dim
 
     def forward(self, x):
-        batch=True
+        x = self.norm1(x)
         for i in range(self.num_cvn_layers):
             self.cvn_dropout[i](x)
-            if batch:
-                x = F.relu(self.batch_norm_cvn[i](self.cvn_list[i](x)))
-            else:
-                x = F.relu(self.cvn_list[i](x))
+            x = F.relu(self.batch_norm_cvn[i](self.cvn_list[i](x)))
 
         # flatten convolutional layer into vector
         x = self.first_batch(x.view(x.size(0), -1))
         for i in range(self.num_hidden_layers):
             self.layer_dropout[i](x)
-            if batch:
-                x = F.relu(self.batch_norm_layer[i](self.layer_list[i](x)))
-            else:
-                x = F.relu(self.layer_list[i](x))
+            x = F.relu(self.batch_norm_layer[i](self.layer_list[i](x)))
         x = self.lin_out(x)
         return x
 
@@ -205,6 +200,7 @@ class HybridNN(nn.Module):
         self.cvn_dropout = nn.ModuleList()
         self.batch_norm_cvn = nn.ModuleList()
 
+        self.norm1 = nn.BatchNorm2d(self.channels)
         conv1 = nn.Conv2d(self.channels, self.num_filters, self.kernel_size, stride=self.stride, padding=self.padding)
         bn1 = nn.BatchNorm2d(self.num_filters)
         self.total_weights += self.num_filters * self.kernel_size[0] * self.kernel_size[1] * self.channels
@@ -246,25 +242,17 @@ class HybridNN(nn.Module):
         self.total_weights += self.fc_layer_neurons * self.out_dim
 
     def forward(self, x, add):
-        batch=True
+        x = self.norm1(x)
         for i in range(self.num_cvn_layers):
             self.cvn_dropout[i](x)
-            if batch:
-                x = F.relu(self.batch_norm_cvn[i](self.cvn_list[i](x)))
-            else:
-                x = F.relu(self.cvn_list[i](x))
+            x = F.relu(self.batch_norm_cvn[i](self.cvn_list[i](x)))
 
-        # flatten convolutional layer into vector
-        #x = self.first_batch(x.view(x.size(0), -1))
         x = x.view(x.size(0), -1)
         x = torch.cat((x,add),1)
         x = self.first_batch(x)
         for i in range(self.num_hidden_layers):
             self.layer_dropout[i](x)
-            if batch:
-                x = F.relu(self.batch_norm_layer[i](self.layer_list[i](x)))
-            else:
-                x = F.relu(self.layer_list[i](x))
+            x = F.relu(self.batch_norm_layer[i](self.layer_list[i](x)))
         x = self.lin_out(x)
         return x
 

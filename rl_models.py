@@ -26,8 +26,8 @@ class DQN:
         self.eps_min = 0.1
         self.input_dim = input_dim
         self.output_dim = output_dim
-        self.num_hidden_layers = 2 # 2
-        self.num_neurons_per_layer = 128 # 256
+        self.num_hidden_layers = 1 # 2
+        self.num_neurons_per_layer = 16 # 256
         self.discount = 0.99
         self.warmup_steps = 1e5
         self.target_update_freq = 50 # 50
@@ -35,10 +35,10 @@ class DQN:
         self.eval_freq = 5000000000 # 100
         self.train_freq = 20
         self.alpha = 1
-        self.weight_decay = 0.0001
+        self.weight_decay = 0.001
         self.dropout = 0.5
         self.num_cvn_layers = 2
-        self.num_filters = 5
+        self.num_filters = 2
         self.kernel_size=(2,2)
         self.num_add=11
         self.hybrid=True
@@ -54,14 +54,7 @@ class DQN:
     def select_action(self, state, actions, eps=0):
         if np.random.random() < eps:
             return np.random.choice(actions)
-        with torch.no_grad():
-            if self.hybrid:
-                torch_board = torch.tensor([state[0]], dtype=torch.float32)
-                torch_state = torch.tensor([state[1]], dtype=torch.float32)
-                vals = self.policy(torch_board, torch_state)[0]
-            else:
-                torch_state=torch.tensor([state[0]],dtype=torch.float32)
-                vals = self.policy(torch_state)[0]
+        vals = self.get_q_vals(state)
         max_as = torch.topk(vals,len(vals)).indices
         i = 0
         while not (max_as[i] in actions):
