@@ -4,10 +4,10 @@ import random
 import time
 import timeit
 
-import visual_tools as vt
-import rl_models
-import retro_env
-import fb_controller
+import tk_fbrl_site.visual_tools as vt
+import fbrl_code.rl_models as rl_models
+import fbrl_code.retro_env as retro_env
+import fbrl_code.fb_controller as fb_controller
 
 class View(ttk.Frame):
     def __init__(self, frm:ttk.Frame, borderwidth=2, relief='groove'):

@@ -1,18 +1,18 @@
 import numpy as np
-import nn_models
+import fbrl_code.nn_models as nn_models
 import torch
 import copy
 import torch.optim as optim
 import torch.nn.functional as F
 
-from utils import ReplayBuffer
-import fb_controller
+from fbrl_code.utils import ReplayBuffer
+import fbrl_code.fb_controller as fb_controller
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class DQN:
 
-    def __init__(self, input_dim, output_dim):
+    def __init__(self, input_dim, output_dim, hybrid=True):
         seed = 100
         torch.manual_seed(seed)
         np.random.seed(seed)
@@ -41,13 +41,13 @@ class DQN:
         self.num_filters = 2
         self.kernel_size=(2,2)
         self.num_add=11
-        self.hybrid=True
+        self.hybrid=hybrid
 
         self.replay_buffer = ReplayBuffer(self.input_dim, self.batch_size,self.buffer_size, device, more_state_dim=self.num_add)
-        #self.policy = nn_models.SimpleNN(self.input_dim,self.output_dim,self.num_hidden_layers,self.num_neurons_per_layer).to(device)
-        #self.policy = nn_models.ComplexNN(self.input_dim, self.output_dim, self.num_hidden_layers, self.num_neurons_per_layer, self.dropout).to(device)
-        #self.policy = nn_models.CNN(self.input_dim, self.output_dim, self.num_cvn_layers, self.num_filters, self.num_hidden_layers, self.num_neurons_per_layer, self.dropout,kernel_size=self.kernel_size).to(device)
-        self.policy = nn_models.HybridNN(self.input_dim, self.output_dim, self.num_add, self.num_cvn_layers, self.num_filters, self.num_hidden_layers, self.num_neurons_per_layer, self.dropout,kernel_size=self.kernel_size).to(device)
+        if self.hybrid:
+            self.policy = nn_models.HybridNN(self.input_dim, self.output_dim, self.num_add, self.num_cvn_layers, self.num_filters, self.num_hidden_layers, self.num_neurons_per_layer, self.dropout,kernel_size=self.kernel_size).to(device)
+        else:
+            self.policy = nn_models.CNN(self.input_dim, self.output_dim, self.num_cvn_layers, self.num_filters, self.num_hidden_layers, self.num_neurons_per_layer, self.dropout,kernel_size=self.kernel_size).to(device)
         self.target_policy = copy.deepcopy(self.policy)
         self.optimizer = optim.Adam(self.policy.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
 

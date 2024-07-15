@@ -1,7 +1,7 @@
 import tkinter as tk
 import random
 
-import retro_env
+import fbrl_code.retro_env as retro_env
 
 class FbController:
 

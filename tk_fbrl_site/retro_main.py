@@ -1,12 +1,13 @@
-import random
-import time
 import tkinter as tk
 from tkinter import ttk
 
-import retro_env
-import fb_controller
-import display_game
-import rl_models
+import sys
+sys.path.append('../fb_rl')
+
+import fbrl_code.retro_env as retro_env
+import fbrl_code.fb_controller as fb_controller
+import tk_fbrl_site.display_game as display_game
+import fbrl_code.rl_models as rl_models
 
 def build_home(root:tk.Tk) -> display_game.View:
     home = display_game.View(root, borderwidth=2, relief='groove')
