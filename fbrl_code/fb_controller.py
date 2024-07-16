@@ -4,8 +4,14 @@ import random
 import fbrl_code.retro_env as retro_env
 
 class FbController:
+    i = 0
 
-    def __init__(self):
+    def __init__(self, name=None):
+        if name is None:
+            self.name = str(self.i)
+            self.i += 1
+        else:
+            self.name = name
         self.send = False
 
     def on(self) -> None:
@@ -21,11 +27,17 @@ class FbController:
         pass
 
 class GameManager:
+    i = 0
 
-    def __init__(self, env:retro_env.FootballEnv, c1:FbController, c2:FbController):
+    def __init__(self, env:retro_env.FootballEnv, c1:FbController, c2:FbController, name=None):
         self.env = env
         self.controller1 = c1
         self.controller2 = c2
+        if name is None:
+            self.name = str(self.i)
+            self.i += 1
+        else:
+            self.name = name
 
     def reset(self):
         self.env.reset(total_reset=True)
@@ -65,21 +77,63 @@ class GameManager:
 
 class FbRandomController(FbController):
 
-    def __init__(self):
-        pass
+    def __init__(self, name=None):
+        super().__init__(name)
 
     def select_action(self, state, actions:list[int],eps):
         if retro_env.FootballEnv.PUNT in actions:
             actions.remove(retro_env.FootballEnv.PUNT)
         return random.choice(actions)
+    
+class FbKeyboardControllerDjango(FbController):
+    def __init__(self, name=None):
+        super().__init__(name)
+        self.moves = []
 
-class FbKeyboardController(FbController):
+    def select_action(self, state, actions,eps):
+        if len(self.moves) > 0:
+            move = self.moves.pop(0)
+            while len(self.moves) > 0 and not (move in actions):
+                move = self.moves.pop(0)
+            return move
+        
+    def off(self) -> None:
+        super().off()
+        self.moves = []
+
+    def key_press(self, key):
+        if not self.send:
+            return
+        if key == 'space':
+            action = retro_env.FootballEnv.NO_MOVE
+        elif key == 'Left':
+            action = retro_env.FootballEnv.LEFT
+        elif key == 'Right':
+            action = retro_env.FootballEnv.RIGHT
+        elif key == 'Up':
+            action = retro_env.FootballEnv.UP
+        elif key == 'Down':
+            action = retro_env.FootballEnv.DOWN
+        elif 0 and key == 'r':
+            action = retro_env.FootballEnv.RESET
+        elif key == 'k':
+            action = retro_env.FootballEnv.KICK
+        elif key == 'p':
+            action = retro_env.FootballEnv.PUNT
+        else:
+            return
+        self.moves.append(action)
+
+    
+
+class FbKeyboardControllerTk(FbController):
     """
     Keyboard controller for retro_env
     Calls actions based on user input to the keyboard
     """
 
-    def __init__(self, root):
+    def __init__(self, name=None, root=None):
+        super().__init__(name)
         root.bind('<KeyPress>', self.key_press)
         self.moves = []
 
@@ -122,7 +176,8 @@ class FbKeyboardController(FbController):
 
 class FbLearningController(FbController):
     
-    def __init__(self, rl_model):
+    def __init__(self, rl_model, name=None):
+        super().__init__(name)
         self.train = True
         self.model = rl_model
 

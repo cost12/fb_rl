@@ -1,11 +1,24 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
-    {{ info }}
-</body>
-</html>
+{% extends 'base.html' %}
+
+{% block head %} {% endblock %}
+
+{% block body %}
+<section class="welcome">
+    <div class="container">
+        <h1> Welcome to the game section </h1>
+        <p> Choose an available game or create a new one </p>
+    </div>
+</section>
+
+<section class="games">
+    <div class="container">
+        <ul>
+            <li> <a href="create"> New Game </a> </li>
+            {% for manager in managers %}
+                <li> <a href="#"></a> </li>
+            {% endfor %}
+        </ul>
+    </div>
+</section>
+
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block head %} {% endblock %}
+
+{% block body %}
+<section class="heading">
+    <div class="container">
+        <h1> Choose the teams to play </h1>
+    </div>
+</section>
+
+<section class="controllers">
+    <div class="container">
+        <form method="post">
+            {% csrf_token %}
+            {{form}}
+            <input type="submit">
+        </form>
+    </div>
+</section>
+{% endblock %}
