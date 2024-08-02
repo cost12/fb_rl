@@ -16,29 +16,37 @@ def build_home(root:tk.Tk) -> display_game.View:
 
 def football_vis(env:retro_env.FootballEnv, controller1, controller2) -> None:
     root = tk.Tk()
-    home = build_home(root)
+    view = display_game.MainFrame(root)
+    home = build_home(view)
     #controller1 = fb_controller.FbKeyboardController(root)
     #controller2 = fb_controller.FbKeyboardController(root)
     game_manager = fb_controller.GameManager(env,controller1,controller2)
+    user1 = fb_controller.FbKeyboardControllerTk("User1", root)
+    #user2 = fb_controller.FbKeyboardControllerTk("User2", root)
+    rando1 = fb_controller.FbRandomController("Random1")
+    rando2 = fb_controller.FbRandomController("Random2")
+    controllers = [user1, controller1, controller2, rando1, rando2]
     frames = dict[str,display_game.View]( \
                 {
-                    "Game" :     display_game.GameFrame(root, game_manager),
-                    "Training":  display_game.TrainingFrame(root,retro_env.FootballEnv(),controller1.model,controller2.model),
+                    "Game Setup" : display_game.GameSetFrame(view, controllers),
+                    "Game" :     display_game.GameFrame(view, game_manager),
+                    "Training":  display_game.TrainingFrame(view,retro_env.FootballEnv(),controller1.model,controller2.model),
                     "Home" :     home
                     #"Settings" : SettingsFrame(root) \
                 } \
             )
     access = dict[str,list[str]]( \
                 {
+                    "Game Setup" : ["Home"],
                     "Game" :    ["Home"],
                     "Training": ["Home"],
-                    "Home" :    ["Game","Training"]
+                    "Home" :    ["Training","Game Setup"]
                 } \
             )
     start = "Home"
-    view = display_game.MainFrame(root, frames, access, start)
+    view.set_frames_and_access(frames, access, start)
     view.pack()
-    view.change_view("Game")
+    #view.change_view("Game")
     view.change_view(start)
     root.after(100,view.main_loop)
     root.mainloop()
@@ -48,8 +56,8 @@ def main():
     learner1 = rl_models.DQN((1,3,10),7)
     learner2 = rl_models.DQN((1,3,10),7)
     #rl_models.learning_loop(env, learner1, learner2,100000)
-    learn_controller1 = fb_controller.FbLearningController(learner1)
-    learn_controller2 = fb_controller.FbLearningController(learner2)
+    learn_controller1 = fb_controller.FbLearningController(learner1,"DQN1")
+    learn_controller2 = fb_controller.FbLearningController(learner2,"DQN2")
     #env.reset(total_reset=True)
     football_vis(env,learn_controller1,learn_controller2)
     

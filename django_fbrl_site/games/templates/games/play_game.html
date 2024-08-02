@@ -3,5 +3,17 @@
 {% block head %} {% endblock %}
 
 {% block body %}
-<p> Game name {{game.name}} </p>
+<p> Game name: {{name}} </p>
+
+<section class="scorebug">
+    <p> {{team1}} {{score1}} {{team2}} {{score2}} {{q}} {{time}} {{down}} & {{dist}} {{yd}} FG: {{fg}} Current Gain: {{gain}} <br> TOL: {{to1}} TOL: {{to2}}  Current Reward: {{current_reward}} Last Reward: {{last_reward}} </p>
+</section>
+
+<canvas id="field" width="1000" height="500" context="2d">
+    
+</canvas>
+
+<section class="additional_info">
+    <p> STAY: {{qstay}} <br> LEFT: {{qleft}} <br> RIGHT: {{qright}} <br> UP: {{qup}} <br> DOWN: {{qdown}} <br> KICK: {{qkick}} <br> PUNT: {{qpunt}} </p>
+</section>
 {% endblock %}

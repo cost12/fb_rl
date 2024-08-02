@@ -33,6 +33,8 @@ class GameManager:
         self.env = env
         self.controller1 = c1
         self.controller2 = c2
+        self.current_reward = 0
+        self.last_reward = 0
         if name is None:
             self.name = str(self.i)
             self.i += 1
@@ -50,6 +52,12 @@ class GameManager:
         self.controller1.off()
         self.controller2.off()
 
+    def get_current_reward(self):
+        return self.current_reward
+    
+    def get_last_reward(self):
+        return self.last_reward
+
     def advance_play(self,eps=0) -> int:
         if self.env.is_over():
             return
@@ -64,11 +72,17 @@ class GameManager:
             self.controller2.off()
             action = self.controller1.select_action(s1, self.env.get_actions(),eps)
         if action is None:
-            print("no action")
-            return # Why would this happen?
+            #print("no action")
+            return # Why would this happen? Ans: user hasn't input move yet
         s2, r, done = self.env.step(action)
+
+        if done:
+            self.last_reward = self.current_reward + r
+            self.current_reward = 0
+        else:
+            self.current_reward += r
         
-        # this isn't implemented yet
+        # sarsa isn't implemented yet
         if poss:
             self.controller2.sarsa(s1,action,s2,r,done)
         else:
@@ -123,8 +137,6 @@ class FbKeyboardControllerDjango(FbController):
         else:
             return
         self.moves.append(action)
-
-    
 
 class FbKeyboardControllerTk(FbController):
     """

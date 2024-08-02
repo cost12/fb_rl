@@ -513,6 +513,12 @@ class FootballEnv:
     def dir(self):
         return self.state.pos.direction
     
+    def get_yd_str(self):
+        yd_str = "OWN " if (self.yd_line() <= 50 and self.dir() == 1) or (self.yd_line() > 50 and self.dir() == -1) else "OPP "
+        yd_str += (str(self.yd_line()) if self.yd_line() <= 50 else str(100-self.yd_line()))
+        yd_str += '<' if self.dir() == -1 else '>'
+        return yd_str
+    
     def possession(self):
         return self.state.pos.possession  
 

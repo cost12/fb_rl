@@ -13,7 +13,7 @@ class View(ttk.Frame):
     def __init__(self, frm:ttk.Frame, borderwidth=2, relief='groove'):
         super().__init__(frm, borderwidth=borderwidth, relief=relief)
 
-    def change_to(self):
+    def change_to(self, context=None):
         pass
 
     def change_from(self):
@@ -27,15 +27,17 @@ class View(ttk.Frame):
 
 class MainFrame(ttk.Frame):
 
-    def __init__(self, frm:ttk.Frame, frames:dict[str,View], access:dict[str,list[str]], start_screen:str):
+    def __init__(self, frm:ttk.Frame):
         super().__init__(frm, borderwidth=2, relief='groove')
-
         self.root = frm
+        
+
+    def set_frames_and_access(self, frames, access, start_screen):
         self.views = dict[str,View](frames)
         self.access = dict[str,list[str]](access)
         self.view = start_screen
 
-        self.buttons = vt.ButtonGroup(self, "Screens", list(self.access[start_screen]))#,selected=start_screen)
+        self.buttons = vt.ButtonGroup(self, "Screens", list(self.access[self.view]))#,selected=start_screen)
         self.buttons.add_listener(self)
         self.buttons.pack()
 
@@ -46,9 +48,9 @@ class MainFrame(ttk.Frame):
         for view in self.views:
             self.views[view].pack(fill='y',expand=True,side='top')
         for view in self.views:
-            if not view == start_screen:
+            if not view == self.view:
                 self.views[view].forget()
-        self.views[start_screen].change_to()
+        self.views[self.view].change_to()
 
     def main_loop(self):
         self.views[self.view].main_loop()
@@ -59,7 +61,7 @@ class MainFrame(ttk.Frame):
         if name == 'Screens':
             self.change_view(value)
 
-    def change_view(self,view:str) -> None:
+    def change_view(self,view:str, context=None) -> None:
         if not self.views[self.view].ready_to_leave():
             self.error_text.set("Error: Can't leave yet")
             self.buttons.set_highlight(self.view)
@@ -69,16 +71,33 @@ class MainFrame(ttk.Frame):
             self.views[self.view].forget()
             self.views[self.view].change_from()
             self.view = view
-            self.views[self.view].change_to()
+            self.views[self.view].change_to(context)
             self.buttons.set_options(self.access[self.view])
             self.views[self.view].pack(fill='y',expand=True,side='top')
 
 class GameSetFrame(View):
 
-    def __init__(self, frm:ttk.Frame):
+    def __init__(self, frm:MainFrame, controllers:list[fb_controller.FbController]):
         super().__init__(frm, borderwidth=2, relief='groove')
+        self.main = frm
+        self.controllers = {controller.name:controller for controller in controllers}
+        names = list(self.controllers.keys())
+        
+        self.team1 = vt.SingleSelector(self, "Team 1", names)
+        self.team1.grid(row=0,column=0,sticky="news")
+        self.team2 = vt.SingleSelector(self, "Team 2", names)
+        self.team2.grid(row=0,column=1,sticky="news")
+        ttk.Button(self, text="Start", command=self.start_game).grid(row=1,column=0,sticky="news")
 
-    def change_to(self):
+    def start_game(self):
+        if self.team1.get_selected() is not None and self.team2.get_selected() is not None and self.team1.get_selected() != self.team2.get_selected():
+            team1 = self.controllers[self.team1.get_selected()]
+            team2 = self.controllers[self.team2.get_selected()]
+            env = retro_env.FootballEnv()
+            manager = fb_controller.GameManager(env, team1, team2)
+            self.main.change_view("Game", {"manager":manager})
+
+    def change_to(self, context=None):
         pass
 
     def change_from(self):
@@ -149,7 +168,7 @@ class TrainingFrame(View):
         self.val2.set(val2)
         self.feedback.set(f"testing complete for {self.iters.get()} iters and {self.episodes.get()} episodes in {int(stop-start)}s")
 
-    def change_to(self):
+    def change_to(self, context=None):
         pass
 
     def change_from(self):
@@ -162,17 +181,27 @@ class GameFrame(View):
 
     def __init__(self, frm:ttk.Frame, game_manager):
         super().__init__(frm, borderwidth=2, relief='groove')
-        game_manager.env.viewers.append(self)
         self.game_manager = game_manager
-        self.reset(game_manager.env)
-        self.update_env(game_manager.env)
+        self.__reset()
+
+    def __reset(self):
+        self.game_manager.env.viewers.append(self)
+        self.reset(self.game_manager.env)
+        self.update_env(self.game_manager.env)
         self.paused = True
+
+    def set_manager(self, manager):
+        self.game_manager.env.viewers.remove(self)
+        self.game_manager = manager
+        self.__reset()
 
     def main_loop(self):
         if not self.paused:
             self.game_manager.advance_play()
     
-    def change_to(self):
+    def change_to(self, context=None):
+        if "manager" in context:
+            self.set_manager(context["manager"])
         self.game_manager.on()
 
     def change_from(self):
@@ -221,10 +250,7 @@ class ScorebugFrame(ttk.Frame):
         self.time.set(env.time_str())
         self.down.set(env.down()+1)
         self.dist.set(env.dist())
-        yd_str = "OWN " if (env.yd_line() <= 50 and env.dir() == 1) or (env.yd_line() > 50 and env.dir() == -1) else "OPP "
-        yd_str += (str(env.yd_line()) if env.yd_line() <= 50 else str(100-env.yd_line()))
-        self.yd_line.set(yd_str)
-        self.dir.set('<' if env.dir() == -1 else '>')
+        self.yd_line.set(env.get_yd_str())
         self.fg_dist.set(env.state.fg_dist())
         self.gain.set(env.gain())
 
@@ -264,16 +290,13 @@ class ScorebugFrame(ttk.Frame):
         self.yd_line = tk.StringVar()
         ttk.Label(self, textvariable=self.yd_line).grid(row=0,column=10,sticky='news')
 
-        self.dir = tk.StringVar()
-        ttk.Label(self, textvariable=self.dir).grid(row=0,column=11,sticky='news')
-
         self.fg_dist = tk.StringVar()
-        ttk.Label(self, text="FG:").grid(row=0,column=12,sticky='news')
-        ttk.Label(self, textvariable=self.fg_dist).grid(row=0,column=13,sticky='news')
+        ttk.Label(self, text="FG:").grid(row=0,column=11,sticky='news')
+        ttk.Label(self, textvariable=self.fg_dist).grid(row=0,column=12,sticky='news')
 
         self.gain = tk.StringVar()
-        ttk.Label(self, text="Current:").grid(row=0,column=14,sticky='news')
-        ttk.Label(self, textvariable=self.gain).grid(row=0,column=15,sticky='news')
+        ttk.Label(self, text="Current:").grid(row=0,column=13,sticky='news')
+        ttk.Label(self, textvariable=self.gain).grid(row=0,column=14,sticky='news')
     
 class FieldFrame(ttk.Frame):
 
@@ -368,6 +391,13 @@ class QvalFrame(ttk.Frame):
         ttk.Label(self,textvariable=self.punt_q).grid(row=7,column=1,sticky='news')
         ttk.Label(self,textvariable=self.train_state).grid(row=8,column=0,sticky='news')
 
+        self.current_reward = tk.StringVar()
+        ttk.Label(self, text="Reward:").grid(row=0,column=3,sticky='news')
+        ttk.Label(self, textvariable=self.current_reward).grid(row=0,column=4,sticky='news')
+
+        self.last_reward = tk.StringVar()
+        ttk.Label(self, text="Last:").grid(row=1,column=3,sticky='news')
+        ttk.Label(self, textvariable=self.last_reward).grid(row=1,column=4,sticky='news')
 
     def update_game(self, game_manager):
         vals = None
@@ -392,3 +422,6 @@ class QvalFrame(ttk.Frame):
             self.stay_q.set(vals[retro_env.FootballEnv.NO_MOVE].item())
             self.kick_q.set(vals[retro_env.FootballEnv.KICK].item())
             self.punt_q.set(vals[retro_env.FootballEnv.PUNT].item())
+        
+        self.current_reward.set(game_manager.get_current_reward())
+        self.last_reward.set(game_manager.get_last_reward())

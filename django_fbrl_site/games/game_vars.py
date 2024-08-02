@@ -1,5 +1,5 @@
 import sys
-sys.path.append('../../fb_rl')
+sys.path.append('../fb_rl')
 
 import fbrl_code.retro_env as retro_env
 import fbrl_code.fb_controller as fb_controller
